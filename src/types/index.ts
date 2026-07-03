@@ -167,7 +167,7 @@ export interface PendingPaypalOrder {
 export const COIN_PACKAGES = [
   { coins: 300, price: 3, label: '300 Troll Coins' },
   { coins: 500, price: 5, label: '500 Troll Coins' },
-  { coins: 1000, price: 5, label: '1,000 Troll Coins ($5.00)' },
+  { coins: 1000, price: 10, label: '1,000 Troll Coins' },
   { coins: 2500, price: 25, label: '2,500 Troll Coins' },
   { coins: 5000, price: 50, label: '5,000 Troll Coins' },
   { coins: 10000, price: 100, label: '10,000 Troll Coins' },
