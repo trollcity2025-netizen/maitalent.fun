@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import SEO from '../../components/SEO';
 
 const CASHOUT_OPTIONS = [5, 10, 15, 20, 25, 50, 100, 250, 500];
+const PROCESSING_FEE_PERCENT = 0.029; // 2.9%
 
 // Gift card type options mapping codes to display names
 const GIFT_CARD_TYPES = {
@@ -25,7 +26,9 @@ export default function MaiPayCashout() {
     if (user?.id) loadWallet(user.id);
   }, [user?.id]);
 
-  const cashBalance = wallet?.cash_balance ?? wallet?.total_won ?? 0;
+  const cashBalance = wallet?.cash_balance ?? 0;
+  const processingFee = Number((amount * PROCESSING_FEE_PERCENT).toFixed(2));
+  const totalDeduction = Number((amount + processingFee).toFixed(2));
   const isApproved = user?.cashout_approved ?? false;
 
   const submitCashout = async () => {
@@ -46,38 +49,53 @@ export default function MaiPayCashout() {
       setMessage({ type: 'error', text: `Cashout requests for ${GIFT_CARD_TYPES[giftCardType].label} must be between $${min} and $${max}.` });
       return;
     }
-    if (cashBalance < amount) {
-      setMessage({ type: 'error', text: `Insufficient cash balance. Available: $${cashBalance.toFixed(2)}` });
+    if (cashBalance < totalDeduction) {
+      setMessage({ type: 'error', text: `Insufficient cash balance. Required (including 2.9% fee): $${totalDeduction.toFixed(2)}, Available: $${cashBalance.toFixed(2)}` });
       return;
     }
 
     setLoading(true);
     try {
-      const newBalance = Number((cashBalance - amount).toFixed(2));
+      const newCashBalance = Number((cashBalance - totalDeduction).toFixed(2));
+      const newTotalWon = Math.max(0, Number(((wallet?.total_won ?? 0) - totalDeduction).toFixed(2)));
+      
       const { error: balanceError } = await supabase
         .from('user_profiles')
-        .update({ total_won: newBalance, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
-        .gte('cash_balance', amount);
+        .update({ 
+          cash_balance: newCashBalance,
+          total_won: newTotalWon,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', user.id);
 
       if (balanceError) throw balanceError;
 
       const { error: requestError } = await supabase.from('gift_card_redemptions').insert({
         user_id: user.id,
         amount_usd: amount,
-        gift_card_code: giftCardType, // Store the gift card type code
+        gift_card_code: giftCardType,
         gift_card_progress_used: 0,
         email: user.email,
         status: 'pending',
       });
 
       if (requestError) {
-        await supabase.from('user_profiles').update({ total_won: newBalance, updated_at: new Date().toISOString() }).eq('id', user.id);
+        // Refund on failure
+        const refundCashBalance = Number((newCashBalance + totalDeduction).toFixed(2));
+        const refundTotalWon = Number(((wallet?.total_won ?? 0)).toFixed(2));
+        await supabase
+          .from('user_profiles')
+          .update({ 
+            cash_balance: refundCashBalance,
+            total_won: refundTotalWon,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', user.id);
         throw requestError;
       }
 
       await Promise.all([loadWallet(user.id), loadUser()]);
-      setMessage({ type: 'success', text: `Cashout request submitted for a $${amount.toFixed(2)} ${GIFT_CARD_TYPES[giftCardType].label} gift card. Track it in Requests.` });
+      setMessage({ type: 'success', text: `Cashout request submitted for a $${amount.toFixed(2)} ${GIFT_CARD_TYPES[giftCardType].label} gift card. Fee: $${processingFee.toFixed(2)}. Total deducted: $${totalDeduction.toFixed(2)}. Track it in Requests.` });
     } catch (error: any) {
       setMessage({ type: 'error', text: error?.message || 'Failed to submit cashout request.' });
     } finally {
@@ -96,6 +114,11 @@ export default function MaiPayCashout() {
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Available Cash Balance</p>
         <p className="neon-text-green" style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '2rem' }}>${cashBalance.toFixed(2)}</p>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Request Visa gift cards from $5 to $500.</p>
+        {amount >= 5 && amount <= 500 && (
+          <div style={{ marginTop: 12, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <p>Gift Card: ${amount.toFixed(2)} | Fee (2.9%): ${processingFee.toFixed(2)} | Total: ${totalDeduction.toFixed(2)}</p>
+          </div>
+        )}
       </div>
 
       {!isApproved && (
@@ -146,7 +169,7 @@ export default function MaiPayCashout() {
         </select>
       </div>
 
-      <button className="btn btn-pink" onClick={submitCashout} disabled={loading || !isApproved || amount < 5 || amount > 500 || cashBalance < amount} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }}>
+      <button className="btn btn-pink" onClick={submitCashout} disabled={loading || !isApproved || amount < 5 || amount > 500 || cashBalance < totalDeduction} style={{ width: '100%', maxWidth: 420, display: 'block', margin: '0 auto' }}>
         {loading ? 'Submitting...' : 'Submit Cashout Request'}
       </button>
     </div>

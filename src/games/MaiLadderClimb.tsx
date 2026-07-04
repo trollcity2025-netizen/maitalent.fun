@@ -156,67 +156,53 @@ export default function MaiLadderClimb() {
     }
   }, [user?.id, refreshWallet, loadTokenTransactions, loadSessions]);
 
-  const awardCashReward = useCallback(async (payout: number) => {
+  const handleCashReward = useCallback(async (payout: number) => {
     if (!user?.id || payout <= 0) return;
 
     try {
-      const { error } = await supabase.rpc('process_cashout_deduction', {
-        p_user_id: user.id,
-        p_amount: payout,
-      });
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('cash_balance,total_won')
+        .eq('id', user.id)
+        .single();
 
-      if (!error) return;
+      if (profileError) {
+        console.warn('[MaiLadderClimb] reward profile lookup failed:', profileError);
+        return;
+      }
 
-      console.warn('[MaiLadderClimb] process_cashout_deduction error:', error);
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          cash_balance: Number(profile?.cash_balance ?? 0) + payout,
+          total_won: Number(profile?.total_won ?? 0) + payout,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
 
-      if (
-        error.code === 'P0001' ||
-        error.message?.toLowerCase().includes('insufficient cashout balance')
-      ) {
-        const coinAmount = Math.round(payout * 100);
+      if (updateError) {
+        console.warn('[MaiLadderClimb] reward update failed:', updateError);
+        return;
+      }
 
-        const { data: profile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('cash_balance,total_won')
-          .eq('id', user.id)
-          .single();
+      const coinAmount = Math.round(payout * 100);
+      const { error: transactionError } = await supabase
+        .from('coin_transactions')
+        .insert({
+          user_id: user.id,
+          type: 'reward',
+          amount: coinAmount,
+          price_usd: payout,
+          status: 'completed',
+        });
 
-        if (profileError) {
-          console.warn('[MaiLadderClimb] reward profile lookup failed:', profileError);
-          return;
-        }
-
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .update({
-            cash_balance: Number(profile?.cash_balance ?? wallet?.cash_balance ?? 0) + payout,
-            total_won: Number(profile?.total_won ?? wallet?.total_won ?? 0) + payout,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', user.id);
-
-        if (updateError) {
-          console.warn('[MaiLadderClimb] fallback profile reward update failed:', updateError);
-          return;
-        }
-
-        const { error: transactionError } = await supabase
-          .from('coin_transactions')
-          .insert({
-            user_id: user.id,
-            type: 'reward',
-            amount: coinAmount,
-            status: 'completed',
-          });
-
-        if (transactionError) {
-          console.warn('[MaiLadderClimb] fallback reward transaction failed:', transactionError);
-        }
+      if (transactionError) {
+        console.warn('[MaiLadderClimb] reward transaction failed:', transactionError);
       }
     } catch (err) {
       console.error('[MaiLadderClimb] reward processing exception:', err);
     }
-  }, [user?.id, wallet?.cash_balance, wallet?.total_won]);
+  }, [user?.id]);
 
   const awardCrownStreakBonus = useCallback(async (nextStreak: number) => {
     if (!user?.id || nextStreak <= 0 || nextStreak % 3 !== 0) return;
@@ -336,7 +322,7 @@ export default function MaiLadderClimb() {
     try {
       if (correct) {
         await soundEngine.play('ladder_climb', 'win');
-        await awardCashReward(payout);
+        await handleCashReward(payout);
 
         const nextStreak = streak + 1;
         setStreak(nextStreak);
@@ -364,7 +350,7 @@ export default function MaiLadderClimb() {
     streak,
     clearTimer,
     soundEngine,
-    awardCashReward,
+    handleCashReward,
     awardCrownStreakBonus,
     refreshGameData,
   ]);
