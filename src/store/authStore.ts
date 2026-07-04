@@ -25,10 +25,11 @@ function profileToWallet(profile: Profile | null): Wallet | null {
     coin_balance: profile.troll_coins ?? 0,
     token_balance: profile.tokens ?? 0,
     hype_coins: profile.hype_coins ?? 0,
+    cash_balance: profile.cash_balance ?? 0,
     total_deposited: profile.total_deposited ?? 0,
     total_won: profile.total_won ?? 0,
     total_cashed_out: profile.total_cashed_out ?? 0,
-    updated_at: profile.updated_at ?? profile.created_at,
+    updated_at: profile.updated_at || profile.created_at || new Date().toISOString(),
   };
 }
 
