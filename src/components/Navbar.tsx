@@ -3,7 +3,6 @@ import { useAuthStore } from '../store/authStore';
 import { useWalletStore } from '../store/walletStore';
 import { useState, useEffect } from 'react';
 import { Menu, X, Coins, LogOut, Shield, Home, Gamepad2, ShoppingBag, CreditCard, LayoutDashboard, Wallet, Flame, Gift, Crown } from 'lucide-react';
-import AdminStatsPopup from './AdminStatsPopup';
 
 export default function Navbar() {
   const { user, isAdmin, signOut } = useAuthStore();
