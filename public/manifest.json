@@ -1,0 +1,17 @@
+{
+  "name": "MaiTalent.fun - Arcade Rewards Platform",
+  "short_name": "MaiTalent",
+  "description": "Play arcade games, earn Troll Coins, cash out via PayPal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#00f0ff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+export interface Profile {
+  id: string;
+  username: string;
+  email: string;
+  avatar_url?: string;
+  is_admin: boolean;
+  created_at: string;
+  frozen: boolean;
+  frozen_until?: string;
+  paypal_email?: string;
+  preferred_payout_method?: string;
+  cashout_approved?: boolean;
+  troll_coins?: number;
+  tokens?: number;
+  hype_coins?: number;
+  cashout_coins?: number;
+  cashout_reserved_coins?: number;
+  crowns?: number;
+  gift_card_progress?: number;
+  total_deposited?: number;
+  total_won?: number;
+  total_cashed_out?: number;
+  updated_at?: string;
+}
+
+export interface Wallet {
+  id: string;
+  user_id: string;
+  coin_balance: number;
+  token_balance: number;
+  hype_coins: number;
+  total_deposited: number;
+  total_won: number;
+  total_cashed_out: number;
+  updated_at: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  user_id: string;
+  type: 'purchase' | 'bonus' | 'refund' | 'admin_adjustment' | 'crown_conversion' | 'hype_conversion' | 'cashout_fee' | 'cashout_reserve';
+  amount: number;
+  price_usd?: number;
+  payment_id?: string;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  created_at: string;
+}
+
+export interface TokenTransaction {
+  id: string;
+  user_id: string;
+  type: 'convert' | 'play' | 'reward' | 'bonus' | 'admin_adjustment' | 'purchase';
+  amount: number;
+  source?: 'troll_coin' | 'hype_coin' | 'free' | 'purchase';
+  reference_id?: string;
+  created_at: string;
+}
+
+export interface GameSession {
+  id: string;
+  user_id: string;
+  game_type: 'coin_flip' | 'treasure_hunt' | 'lucky_spin' | 'card_pick' | 'ladder_climb';
+  token_cost: number;
+  result: 'win' | 'loss' | 'pending';
+  reward_amount: number;
+  reward_type: 'cash' | 'token' | 'gift_card' | 'free_turn' | 'none';
+  random_seed: string;
+  created_at: string;
+  ip_address?: string;
+  device_info?: string;
+}
+
+export interface CashoutRequest {
+  id: string;
+  user_id: string;
+  requested_amount: number;
+  coin_amount: number;
+  paypal_email: string;
+  status: 'pending' | 'approved' | 'paid' | 'denied' | 'refunded';
+  paypal_payout_batch_id?: string;
+  paypal_transaction_id?: string;
+  approved_by?: string;
+  requested_at: string;
+  approved_at?: string;
+  paid_at?: string;
+  denied_reason?: string;
+  visa_gift_code?: string;
+}
+
+export interface AdminGameSettings {
+  id: string;
+  game_type: string;
+  win_probability: number;
+  max_daily_payout: number;
+  max_user_daily_payout: number;
+  max_user_weekly_payout: number;
+  is_enabled: boolean;
+  updated_at: string;
+  updated_by: string;
+}
+
+export interface TriviaQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+  category: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  created_at: string;
+}
+
+export interface AuditLog {
+  id: string;
+  user_id?: string;
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  details: Record<string, unknown>;
+  ip_address?: string;
+  created_at: string;
+}
+
+export interface ResponsiblePlayLimit {
+  id: string;
+  user_id: string;
+  daily_play_count: number;
+  daily_spend_usd: number;
+  weekly_play_count: number;
+  weekly_spend_usd: number;
+  self_excluded_until?: string;
+  cooling_off_until?: string;
+  updated_at: string;
+}
+
+export interface MaiPayApplication {
+  id: string;
+  user_id: string;
+  paypal_email: string;
+  status: 'pending' | 'approved' | 'denied';
+  created_at: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+}
+
+export interface GiftCardRedemption {
+  id: string;
+  user_id: string;
+  amount_usd: number;
+  gift_card_progress_used: number;
+  email: string;
+  visa_gift_code?: string;
+  status: 'pending' | 'approved' | 'sent' | 'denied' | 'completed';
+  sent_by?: string;
+  sent_at?: string;
+  created_at: string;
+}
+
+export interface PendingPaypalOrder {
+  order_id: string;
+  user_id: string;
+  coins: number;
+  price_usd: number;
+  capture_id?: string;
+  status: 'pending' | 'captured' | 'failed' | 'cancelled';
+  created_at: string;
+  captured_at?: string;
+}
+
+export const COIN_PACKAGES = [
+  { coins: 300, price: 3, label: '300 Troll Coins' },
+  { coins: 500, price: 5, label: '500 Troll Coins' },
+  { coins: 1000, price: 10, label: '1,000 Troll Coins' },
+  { coins: 2500, price: 25, label: '2,500 Troll Coins' },
+  { coins: 5000, price: 50, label: '5,000 Troll Coins' },
+  { coins: 10000, price: 100, label: '10,000 Troll Coins' },
+  { coins: 15000, price: 150, label: '15,000 Troll Coins' },
+  { coins: 25000, price: 250, label: '25,000 Troll Coins' },
+  { coins: 50000, price: 500, label: '50,000 Troll Coins' },
+];
+
+export const SPIN_WHEEL_SEGMENTS = [
+  { label: '.01', value: 0.01, type: 'cash' },
+  { label: 'No Win', value: 0, type: 'none' },
+  { label: '.05', value: 0.05, type: 'cash' },
+  { label: 'Free Turn', value: 1, type: 'token' },
+  { label: '.10', value: 0.10, type: 'cash' },
+  { label: 'No Win', value: 0, type: 'none' },
+  { label: 'Gift Card Entry', value: 0, type: 'gift_card' },
+  { label: 'Bankrupt', value: 0, type: 'bankrupt' },
+  { label: '.01', value: 0.01, type: 'cash' },
+  { label: 'No Win', value: 0, type: 'none' },
+  { label: '.05', value: 0.05, type: 'cash' },
+  { label: 'Free Turn', value: 1, type: 'token' },
+];
