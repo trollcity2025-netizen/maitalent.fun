@@ -54,6 +54,7 @@ export default function MaiLuckySpin() {
     setMessage(null);
 
     let spinResult: SpinResult;
+    let backendSuccess = true;
     try {
       const { data, error } = await supabase.rpc('play_game', {
         p_game_type: 'lucky_spin',
@@ -61,8 +62,10 @@ export default function MaiLuckySpin() {
       });
       if (error) {
         console.error('[MaiLuckySpin] play_game rpc error', error);
+        backendSuccess = false;
         spinResult = simulateSpin();
       } else if (!data || (Array.isArray(data) && data.length === 0)) {
+        backendSuccess = false;
         spinResult = simulateSpin();
       } else {
         const row = Array.isArray(data) ? data[0] : data;
@@ -80,6 +83,7 @@ export default function MaiLuckySpin() {
       }
     } catch (err) {
       console.error('[MaiLuckySpin] play_game exception', err);
+      backendSuccess = false;
       spinResult = simulateSpin();
     }
 
@@ -98,8 +102,46 @@ export default function MaiLuckySpin() {
       let nextMessage: string | null = null;
       if (user?.id) {
         try {
-          // if backend didn't award a token, perform fallback updates server-side
-          // but prefer backend to have done the work; we only run client fallback if needed
+          // if backend didn't award, perform fallback updates server-side
+          if (!backendSuccess && spinResult.reward_type === 'cash' && spinResult.payout > 0) {
+            try {
+              const { data: profile, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('cash_balance,total_won')
+                .eq('id', user.id)
+                .single();
+
+              if (profileError) {
+                console.warn('[MaiLuckySpin] reward profile lookup failed:', profileError);
+              } else {
+                const { error: updateError } = await supabase
+                  .from('user_profiles')
+                  .update({
+                    cash_balance: Number((Number(profile?.cash_balance ?? 0) + spinResult.payout).toFixed(2)),
+                    total_won: Number((Number(profile?.total_won ?? 0) + spinResult.payout).toFixed(2)),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', user.id);
+
+                if (updateError) {
+                  console.warn('[MaiLuckySpin] reward update failed:', updateError);
+                } else {
+                  const coinAmount = Math.round(spinResult.payout * 100);
+                  const { error: transactionError } = await supabase.from('coin_transactions').insert({
+                    user_id: user.id,
+                    type: 'reward',
+                    amount: coinAmount,
+                    price_usd: spinResult.payout,
+                    status: 'completed',
+                  });
+                  if (transactionError) console.warn('[MaiLuckySpin] reward transaction failed:', transactionError);
+                }
+              }
+            } catch (err) {
+              console.error('[MaiLuckySpin] reward processing exception:', err);
+            }
+          }
+
           if (spinResult.reward_type === 'token') {
             // backend should have awarded; fallback in case
             await supabase.from('user_profiles').update({ tokens: (wallet?.token_balance ?? 0) + 1 }).eq('id', user.id);

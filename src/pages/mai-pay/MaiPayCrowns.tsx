@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useWalletStore } from '../../store/walletStore';
 import { supabase } from '../../lib/supabase';
 import SEO from '../../components/SEO';
 
@@ -12,6 +13,7 @@ interface CrownRedemption {
 
 export default function MaiPayCrowns() {
   const { user } = useAuthStore();
+  const { refreshWallet, loadCoinTransactions } = useWalletStore();
   const [crownBalance, setCrownBalance] = useState(user?.crowns ?? 0);
   const [convertAmount, setConvertAmount] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,36 +54,42 @@ export default function MaiPayCrowns() {
     setLoading(true);
     const coinsReceived = (crowns / 100) * 500;
 
-    // Insert redemption record
-    const { error: insertError } = await supabase
-      .from('crown_redemptions')
-      .insert({
-        user_id: user!.id,
-        crowns_used: crowns,
-        coins_received: coinsReceived,
-      });
+    // Prefer server RPC which performs an atomic conversion and RLS-safe updates
+    const { error: rpcError } = await supabase.rpc('convert_crowns', {
+      p_user_id: user!.id,
+      p_crowns: crowns,
+    });
 
-    if (insertError) {
-      setMessage({ type: 'error', text: 'Conversion failed. Please try again.' });
-      setLoading(false);
-      return;
+    if (rpcError) {
+      // Fallback: attempt manual insert+update (best-effort)
+      const { error: insertError } = await supabase
+        .from('crown_redemptions')
+        .insert({ user_id: user!.id, crowns_used: crowns, coins_received: coinsReceived });
+
+      if (insertError) {
+        setMessage({ type: 'error', text: 'Conversion failed. Please try again.' });
+        setLoading(false);
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ crowns: (crownBalance ?? 0) - crowns, troll_coins: (user?.troll_coins ?? 0) + coinsReceived })
+        .eq('id', user!.id);
+
+      if (updateError) {
+        setMessage({ type: 'error', text: 'Conversion failed to update profile. Try again.' });
+        setLoading(false);
+        return;
+      }
     }
 
-    // Update user profile crown balance and add coins
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        crowns: crownBalance - coinsReceived + coinsReceived - crowns,
-        troll_coins: (user?.troll_coins ?? 0) + coinsReceived,
-      })
-      .eq('id', user!.id);
-
-    if (updateError) {
-      // Fallback: try RPC
-      await supabase.rpc('convert_crowns', {
-        p_user_id: user!.id,
-        p_crowns: crowns,
-      });
+    // Refresh wallet and local UI state so balances update immediately
+    try {
+      await refreshWallet(user!.id);
+      await loadCoinTransactions(user!.id);
+    } catch (e) {
+      console.warn('[MaiPayCrowns] refreshWallet failed', e);
     }
 
     setCrownBalance((prev: number) => prev - crowns);

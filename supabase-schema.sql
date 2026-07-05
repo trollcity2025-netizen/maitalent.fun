@@ -195,6 +195,7 @@ CREATE TABLE IF NOT EXISTS pending_paypal_orders (
   capture_id VARCHAR(255),
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'captured', 'failed', 'cancelled')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   captured_at TIMESTAMPTZ
 );
 
@@ -782,6 +783,10 @@ BEGIN
           total_won = total_won + v_reward,
           updated_at = NOW()
       WHERE id = p_user_id;
+
+      -- Record coin_transactions for cash reward (amount in cents)
+      INSERT INTO public.coin_transactions (user_id, type, amount, price_usd, status, created_at)
+      VALUES (p_user_id, 'bonus', round(v_reward * 100)::BIGINT, v_reward, 'completed', NOW());
 
     ELSIF v_reward_type = 'token' THEN
       UPDATE public.user_profiles

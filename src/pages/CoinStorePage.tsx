@@ -22,6 +22,9 @@ export default function CoinStorePage() {
   const [trollAmount, setTrollAmount] = useState(100);
   const [hypeAmount, setHypeAmount] = useState(100);
   const [isPaypalReady, setIsPaypalReady] = useState(false);
+  const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
+  const captureInProgressRef = useRef(false);
+  const capturedOrderIdsRef = useRef(new Set<string>());
   const paypalRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   useEffect(() => {
@@ -74,12 +77,38 @@ export default function CoinStorePage() {
           return data.orderId;
         },
         onApprove: async (data: any) => {
+          const orderId = data.orderID || data.orderId;
+          if (!orderId) {
+            setError('Missing orderId');
+            return;
+          }
+
+          if (captureInProgressRef.current || capturedOrderIdsRef.current.has(orderId)) {
+            console.warn('Duplicate capture blocked:', orderId);
+            return;
+          }
+
+          captureInProgressRef.current = true;
+          capturedOrderIdsRef.current.add(orderId);
+
           try {
+            setProcessingOrderId(orderId);
             const { data: result, error } = await supabase.functions.invoke('coin-capture', {
-              body: JSON.stringify({ orderId: data.orderID }),
+              body: JSON.stringify({ orderId }),
               headers: { 'Content-Type': 'application/json' },
             });
+
+            if (result?.processing) {
+              setError('Payment is still processing. Please wait a moment and refresh your wallet.');
+              return;
+            }
+
             if (error || !result?.success) throw new Error(error?.message || 'Payment failed');
+            if (result?.coins == null) {
+              setError('Payment completed, but no coins were returned. Please refresh your wallet.');
+              return;
+            }
+
             setSuccess(`${pkg.label} — ${result.tokens ?? result.coins} tokens added!`);
             await refreshWallet(user!.id);
             setTimeout(() => setSuccess(null), 4000);
@@ -87,6 +116,8 @@ export default function CoinStorePage() {
             setError(err.message);
           } finally {
             setProcessing(null);
+            setProcessingOrderId(null);
+            captureInProgressRef.current = false;
           }
         },
         onError: (err: any) => {

@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS public.gift_card_types (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Ensure columns exist on older schemas
+ALTER TABLE public.gift_card_types ADD COLUMN IF NOT EXISTS min_amount INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE public.gift_card_types ADD COLUMN IF NOT EXISTS max_amount INTEGER NOT NULL DEFAULT 500;
+
 -- Populate common gift card types
 INSERT INTO public.gift_card_types (code, provider, description, image_url, min_amount, max_amount)
 VALUES

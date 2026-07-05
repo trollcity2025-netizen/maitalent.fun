@@ -48,10 +48,81 @@ const QUESTIONS: Question[] = [
   { id: 25, question: 'What is the Higgs boson?', options: ['A particle', 'A planet', 'A theory', 'A force'], correctIndex: 0, difficulty: 'hard' },
   { id: 26, question: 'In what year was the first microprocessor released?', options: ['1971', '1975', '1980', '1985'], correctIndex: 0, difficulty: 'hard' },
   { id: 27, question: 'What is the largest known prime number? (as of 2023)', options: ['2^82,589,933 - 1', '2^77,232,917 - 1', '2^74,207,281 - 1', '2^76,243,197 - 1'], correctIndex: 0, difficulty: 'hard' },
+  { id: 28, question: 'Which actor played Iron Man in the Marvel movies?', options: ['Chris Hemsworth', 'Chris Evans', 'Robert Downey Jr.', 'Mark Ruffalo'], correctIndex: 2, difficulty: 'easy' },
+  { id: 29, question: 'Which pop star is known as the Queen of Pop?', options: ['Madonna', 'Beyoncé', 'Taylor Swift', 'Ariana Grande'], correctIndex: 0, difficulty: 'easy' },
+  { id: 30, question: 'Which entrepreneur founded SpaceX?', options: ['Jeff Bezos', 'Elon Musk', 'Bill Gates', 'Warren Buffett'], correctIndex: 1, difficulty: 'easy' },
+  { id: 31, question: 'Which actress played Hermione Granger?', options: ['Emma Watson', 'Emma Stone', 'Natalie Portman', 'Keira Knightley'], correctIndex: 0, difficulty: 'medium' },
+  { id: 32, question: 'Who directed the movie Jurassic Park?', options: ['James Cameron', 'Steven Spielberg', 'Christopher Nolan', 'Ridley Scott'], correctIndex: 1, difficulty: 'medium' },
+  { id: 33, question: 'Which athlete is nicknamed "The Greatest" in boxing?', options: ['Mike Tyson', 'Muhammad Ali', 'Floyd Mayweather', 'Manny Pacquiao'], correctIndex: 1, difficulty: 'easy' },
+  { id: 34, question: 'Which singer is famous for the hit song "Poker Face"?', options: ['Lady Gaga', 'Katy Perry', 'Rihanna', 'Britney Spears'], correctIndex: 0, difficulty: 'easy' },
+  { id: 35, question: 'What is the profession of Oprah Winfrey?', options: ['Chef', 'Talk show host', 'Actor', 'Athlete'], correctIndex: 1, difficulty: 'easy' },
+  { id: 36, question: 'Which actor played the lead role in the movie "Indiana Jones"?', options: ['Harrison Ford', 'Tom Cruise', 'Mel Gibson', 'Sean Connery'], correctIndex: 0, difficulty: 'easy' },
+  { id: 37, question: 'Which actress starred in the movie "La La Land"?', options: ['Emma Stone', 'Anne Hathaway', 'Jennifer Lawrence', 'Scarlett Johansson'], correctIndex: 0, difficulty: 'medium' },
+  { id: 38, question: 'Which singer released the album "1989"?', options: ['Selena Gomez', 'Katy Perry', 'Taylor Swift', 'Demi Lovato'], correctIndex: 2, difficulty: 'medium' },
+  { id: 39, question: 'Which sport is Serena Williams famous for?', options: ['Soccer', 'Basketball', 'Tennis', 'Golf'], correctIndex: 2, difficulty: 'easy' },
+  { id: 40, question: 'Who created the technology company Apple?', options: ['Steve Jobs', 'Bill Gates', 'Mark Zuckerberg', 'Elon Musk'], correctIndex: 0, difficulty: 'easy' },
+  { id: 41, question: 'Which director made the movie "Inception"?', options: ['Christopher Nolan', 'Quentin Tarantino', 'Steven Spielberg', 'Martin Scorsese'], correctIndex: 0, difficulty: 'medium' },
+  { id: 42, question: 'Who is the author of the Harry Potter series?', options: ['J.K. Rowling', 'Suzanne Collins', 'J.R.R. Tolkien', 'Stephen King'], correctIndex: 0, difficulty: 'easy' },
+  { id: 43, question: 'Which singer is a member of the group BTS?', options: ['Taeyeon', 'Jennie', 'Jungkook', 'Lisa'], correctIndex: 2, difficulty: 'medium' },
+  { id: 44, question: 'Which famous talk show host had a show called "The Ellen DeGeneres Show"?', options: ['Oprah Winfrey', 'Ellen DeGeneres', 'Jimmy Fallon', 'Conan O’Brien'], correctIndex: 1, difficulty: 'easy' },
+  { id: 45, question: 'What is Dwayne Johnson’s nickname?', options: ['The Rock', 'The Flash', 'The Hammer', 'The Shield'], correctIndex: 0, difficulty: 'easy' },
+  { id: 46, question: 'Which actor played Jack Sparrow in Pirates of the Caribbean?', options: ['Orlando Bloom', 'Johnny Depp', 'Leonardo DiCaprio', 'Brad Pitt'], correctIndex: 1, difficulty: 'medium' },
+  { id: 47, question: 'Which fashion designer founded the brand Chanel?', options: ['Coco Chanel', 'Donatella Versace', 'Giorgio Armani', 'Calvin Klein'], correctIndex: 0, difficulty: 'medium' },
+  { id: 48, question: 'Which writer created the character Sherlock Holmes?', options: ['Agatha Christie', 'Arthur Conan Doyle', 'Edgar Allan Poe', 'Raymond Chandler'], correctIndex: 1, difficulty: 'medium' },
+  { id: 49, question: 'Which celebrity launched the lifestyle brand Goop?', options: ['Gwyneth Paltrow', 'Jessica Alba', 'Reese Witherspoon', 'Kate Hudson'], correctIndex: 0, difficulty: 'hard' },
+  { id: 50, question: 'Who is the founder of Amazon?', options: ['Jeff Bezos', 'Elon Musk', 'Larry Page', 'Jack Ma'], correctIndex: 0, difficulty: 'easy' },
+  { id: 51, question: 'Which actor played Wolverine in the X-Men movies?', options: ['Chris Evans', 'Hugh Jackman', 'Robert Downey Jr.', 'Chris Hemsworth'], correctIndex: 1, difficulty: 'easy' },
+  { id: 52, question: 'Which Olympic swimmer holds the most gold medals?', options: ['Michael Phelps', 'Usain Bolt', 'Ryan Lochte', 'Mark Spitz'], correctIndex: 0, difficulty: 'medium' },
+  { id: 53, question: 'Which actress starred in the movie "Wonder Woman"?', options: ['Gal Gadot', 'Scarlett Johansson', 'Emma Watson', 'Natalie Portman'], correctIndex: 0, difficulty: 'medium' },
+  { id: 54, question: 'What is the name of Elon Musk’s rocket company?', options: ['Blue Origin', 'SpaceX', 'Virgin Galactic', 'Apollo'], correctIndex: 1, difficulty: 'easy' },
+  { id: 55, question: 'Which actor is famous for the "Mission: Impossible" franchise?', options: ['Tom Cruise', 'Matt Damon', 'Brad Pitt', 'George Clooney'], correctIndex: 0, difficulty: 'easy' },
+  { id: 56, question: 'Which celebrity is known for coaching basketball and appearing on reality TV with the Kardashians?', options: ['Kris Jenner', 'Khloé Kardashian', 'Lamar Odom', 'Kourtney Kardashian'], correctIndex: 2, difficulty: 'hard' },
+  { id: 57, question: 'Which actor played the character Neo in The Matrix?', options: ['Keanu Reeves', 'Brad Pitt', 'Kiefer Sutherland', 'Matt Damon'], correctIndex: 0, difficulty: 'easy' },
+  { id: 58, question: 'Which author wrote Alice\'s Adventures in Wonderland?', options: ['Lewis Carroll', 'Charles Dickens', 'Jules Verne', 'Mark Twain'], correctIndex: 0, difficulty: 'medium' },
+  { id: 59, question: 'Which singer is known as the King of Pop?', options: ['Prince', 'Michael Jackson', 'Elvis Presley', 'Freddie Mercury'], correctIndex: 1, difficulty: 'easy' },
+  { id: 60, question: 'Which actor played Katniss Everdeen in The Hunger Games?', options: ['Jennifer Lawrence', 'Emma Watson', 'Natalie Portman', 'Scarlett Johansson'], correctIndex: 0, difficulty: 'medium' },
+  { id: 61, question: 'Which singer voiced a character in Frozen and sang Let It Go?', options: ['Ariana Grande', 'Demi Lovato', 'Idina Menzel', 'Miley Cyrus'], correctIndex: 2, difficulty: 'medium' },
+  { id: 62, question: 'Which tech CEO co-founded Microsoft?', options: ['Steve Jobs', 'Bill Gates', 'Elon Musk', 'Larry Page'], correctIndex: 1, difficulty: 'easy' },
+  { id: 63, question: 'Which movie features the line "I\'ll be back"?', options: ['Die Hard', 'Terminator', 'RoboCop', 'Predator'], correctIndex: 1, difficulty: 'easy' },
+  { id: 64, question: 'What is the tallest mountain in the world?', options: ['K2', 'Kangchenjunga', 'Mount Everest', 'Lhotse'], correctIndex: 2, difficulty: 'medium' },
+  { id: 65, question: 'Who wrote the novel 1984?', options: ['George Orwell', 'Aldous Huxley', 'Ray Bradbury', 'Arthur C. Clarke'], correctIndex: 0, difficulty: 'medium' },
+  { id: 66, question: 'Which country hosted the 2016 Summer Olympics?', options: ['China', 'Brazil', 'UK', 'Japan'], correctIndex: 1, difficulty: 'easy' },
+  { id: 67, question: 'Who is the CEO of Tesla?', options: ['Tim Cook', 'Mark Zuckerberg', 'Elon Musk', 'Jeff Bezos'], correctIndex: 2, difficulty: 'easy' },
+  { id: 68, question: 'Which singer released the hit song "Hello" in 2015?', options: ['Adele', 'Lady Gaga', 'Rihanna', 'Beyonce'], correctIndex: 0, difficulty: 'easy' },
+  { id: 69, question: 'Which filmmaker directed Pulp Fiction?', options: ['Quentin Tarantino', 'Martin Scorsese', 'Francis Ford Coppola', 'Steven Spielberg'], correctIndex: 0, difficulty: 'medium' },
+  { id: 70, question: 'Which actor played Black Panther in the Marvel films?', options: ['Chadwick Boseman', 'Michael B. Jordan', 'Anthony Mackie', 'Idris Elba'], correctIndex: 0, difficulty: 'medium' },
+  { id: 71, question: 'Which author created The Lord of the Rings?', options: ['C.S. Lewis', 'J.R.R. Tolkien', 'George R.R. Martin', 'J.K. Rowling'], correctIndex: 1, difficulty: 'easy' },
+  { id: 72, question: 'Which musician is known for the song Shape of You?', options: ['Ed Sheeran', 'Bruno Mars', 'Justin Bieber', 'Shawn Mendes'], correctIndex: 0, difficulty: 'easy' },
+  { id: 73, question: 'What is the smallest US state by area?', options: ['Delaware', 'Rhode Island', 'Connecticut', 'New Jersey'], correctIndex: 1, difficulty: 'medium' },
+  { id: 74, question: 'Who played the Genie in the 2019 Aladdin movie?', options: ['Will Smith', 'Jamie Foxx', 'Donald Glover', 'Mena Massoud'], correctIndex: 0, difficulty: 'easy' },
+  { id: 75, question: 'Which actress starred as Princess Leia in Star Wars?', options: ['Carrie Fisher', 'Natalie Portman', 'Daisy Ridley', 'Scarlett Johansson'], correctIndex: 0, difficulty: 'medium' },
+  { id: 76, question: 'Which actor played the lead role in The Revenant?', options: ['Leonardo DiCaprio', 'Brad Pitt', 'Tom Hardy', 'Matt Damon'], correctIndex: 0, difficulty: 'medium' },
+  { id: 77, question: 'Which singer released the song Bad Romance?', options: ['Lady Gaga', 'Katy Perry', 'Beyonce', 'Ariana Grande'], correctIndex: 0, difficulty: 'easy' },
+  { id: 77, question: 'Who is the CEO of Troll City?', options: ['Kain Towns', 'Noah Webb', 'John Smith', 'Sarah Williams'], correctIndex: 0, difficulty: 'easy' },
+  { id: 78, question: 'Who is the founder of Troll City?', options: ['Kain Towns', 'Noah Webb', 'David Miller', 'Emily Davis'], correctIndex: 1, difficulty: 'easy' },
+  { id: 79, question: 'What website is used to access Troll City?', options: ['MaiTrollCity.com', 'TrollCity.net', 'TrollWorld.com', 'CityLive.tv'], correctIndex: 0, difficulty: 'easy' },
+  { id: 80, question: 'What is the primary focus of Troll City?', options: ['Live streaming and community interaction', 'Food delivery', 'Online banking', 'Photo editing'], correctIndex: 0, difficulty: 'easy' },
+  { id: 81, question: 'What can users do on Troll City?', options: ['Broadcast live', 'Watch live streams', 'Join interactive communities', 'All of the above'], correctIndex: 3, difficulty: 'easy' },
+  { id: 82, question: 'What feature allows viewers to support creators during broadcasts?', options: ['Sending gifts', 'Posting reviews', 'Creating polls', 'Uploading files'], correctIndex: 0, difficulty: 'easy' },
+  { id: 83, question: 'What type of platform is Troll City?', options: ['A live social platform', 'A dating app', 'A banking app', 'A ride-sharing service'], correctIndex: 0, difficulty: 'easy' },
+  { id: 84, question: 'What is one goal of Troll City?', options: ['Helping creators build communities', 'Selling vehicles', 'Managing investments', 'Booking hotels'], correctIndex: 0, difficulty: 'easy' },
+  { id: 85, question: 'Which activity is available on Troll City?', options: ['Watching live broadcasts', 'Buying airline tickets', 'Ordering groceries', 'Editing videos offline'], correctIndex: 0, difficulty: 'easy' },
+  { id: 86, question: 'Who can use Troll City?', options: ['Creators, viewers, and community members', 'Doctors only', 'Teachers only', 'Business owners only'], correctIndex: 0, difficulty: 'easy' }, 
+  { id: 87, question: 'What does SUV stand for?', options: ['Sport Utility Vehicle', 'Super Utility Van', 'Special Utility Vehicle', 'Sport Universal Van'], correctIndex: 0, difficulty: 'easy' },
+  { id: 88, question: 'What color traffic light means stop?', options: ['Green', 'Yellow', 'Red', 'Blue'], correctIndex: 2, difficulty: 'easy' },
+  { id: 89, question: 'Which pedal is used to slow down a car?', options: ['Gas pedal', 'Brake pedal', 'Clutch pedal', 'Parking pedal'], correctIndex: 1, difficulty: 'easy' },
+  { id: 90, question: 'What powers a traditional gasoline car?', options: ['Gasoline', 'Water', 'Air', 'Solar Power'], correctIndex: 0, difficulty: 'easy' },
+  { id: 91, question: 'What does RPM stand for?', options: ['Revolutions Per Minute', 'Rotations Per Mile', 'Road Power Motor', 'Rapid Performance Mode'], correctIndex: 0, difficulty: 'easy' },
+  { id: 92, question: 'Which company makes the Mustang?', options: ['Ford', 'Chevrolet', 'Dodge', 'Toyota'], correctIndex: 0, difficulty: 'easy' },
+  { id: 93, question: 'What should you check regularly to help prevent engine damage?', options: ['Engine oil', 'Radio volume', 'Seat position', 'Floor mats'], correctIndex: 0, difficulty: 'easy' },
+  { id: 94, question: 'Which part of a car provides traction on the road?', options: ['Tires', 'Mirrors', 'Headlights', 'Steering wheel'], correctIndex: 0, difficulty: 'easy' },
+  { id: 95, question: 'What does ABS stand for in a vehicle?', options: ['Anti-lock Braking System', 'Automatic Brake Sensor', 'Advanced Brake Support', 'Auto Balance Steering'], correctIndex: 0, difficulty: 'medium' },
+  { id: 96, question: 'What should you do before changing lanes?', options: ['Check mirrors and blind spots', 'Honk the horn', 'Speed up immediately', 'Turn off your headlights'], correctIndex: 0, difficulty: 'easy' },
 ];
 
-const TIMER_SECONDS = 15;
 const GAME_COST = 15;
+const TIMER_SECONDS = 30;
+
 const USED_STORAGE_KEY = 'ladder_climb_used';
 
 function getUsedQuestions(): Set<number> {
@@ -280,7 +351,7 @@ export default function MaiLadderClimb() {
 
       clearTimer();
       timerRef.current = setInterval(() => {
-        setTimeLeft((previous) => {
+        setTimeLeft((previous: number) => {
           if (previous <= 1) {
             clearTimer();
             return 0;

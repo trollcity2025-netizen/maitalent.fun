@@ -36,6 +36,7 @@ export default function MaiCoinFlip() {
     setResult(null);
 
     let gameResult: CoinResult;
+    let backendSuccess = true;
     try {
       const { data, error } = await supabase.rpc('play_game', {
         p_game_type: 'coin_flip',
@@ -43,8 +44,10 @@ export default function MaiCoinFlip() {
       });
       if (error) {
         console.error('[MaiCoinFlip] play_game rpc error', error);
+        backendSuccess = false;
         gameResult = simulateResult();
       } else if (!data || (Array.isArray(data) && data.length === 0)) {
+        backendSuccess = false;
         gameResult = simulateResult();
       } else {
         const row = Array.isArray(data) ? data[0] : data;
@@ -57,11 +60,51 @@ export default function MaiCoinFlip() {
       }
     } catch (err) {
       console.error('[MaiCoinFlip] play_game exception', err);
+      backendSuccess = false;
       gameResult = simulateResult();
     }
 
     if (user?.id) {
       try {
+        if (!backendSuccess && gameResult.payout > 0) {
+          try {
+            const { data: profile, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('cash_balance,total_won')
+              .eq('id', user.id)
+              .single();
+
+            if (profileError) {
+              console.warn('[MaiCoinFlip] reward profile lookup failed:', profileError);
+            } else {
+              const { error: updateError } = await supabase
+                .from('user_profiles')
+                .update({
+                  cash_balance: Number((Number(profile?.cash_balance ?? 0) + gameResult.payout).toFixed(2)),
+                  total_won: Number((Number(profile?.total_won ?? 0) + gameResult.payout).toFixed(2)),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', user.id);
+
+              if (updateError) {
+                console.warn('[MaiCoinFlip] reward update failed:', updateError);
+              } else {
+                const coinAmount = Math.round(gameResult.payout * 100);
+                const { error: transactionError } = await supabase.from('coin_transactions').insert({
+                  user_id: user.id,
+                  type: 'reward',
+                  amount: coinAmount,
+                  price_usd: gameResult.payout,
+                  status: 'completed',
+                });
+                if (transactionError) console.warn('[MaiCoinFlip] reward transaction failed:', transactionError);
+              }
+            }
+          } catch (err) {
+            console.error('[MaiCoinFlip] reward processing exception:', err);
+          }
+        }
+
         await Promise.all([
           refreshWallet(user.id),
           loadTokenTransactions(user.id),

@@ -34,6 +34,7 @@ export default function MaiCardPick() {
     if (!user || (wallet?.token_balance ?? 0) < GAME_COST || picked !== null) return;
 
     let result: CardResult;
+    let backendSuccess = true;
     try {
       const { data, error } = await supabase.rpc('play_game', {
         p_game_type: 'card_pick',
@@ -41,8 +42,10 @@ export default function MaiCardPick() {
       });
       if (error) {
         console.error('[MaiCardPick] play_game rpc error', error);
+        backendSuccess = false;
         result = simulateCards();
       } else if (!data || (Array.isArray(data) && data.length === 0)) {
+        backendSuccess = false;
         result = simulateCards();
       } else {
         const row = Array.isArray(data) ? data[0] : data;
@@ -73,16 +76,56 @@ export default function MaiCardPick() {
       }
     } catch (err) {
       console.error('[MaiCardPick] play_game exception', err);
+      backendSuccess = false;
       result = simulateCards();
     }
 
     setCards(result);
     setPicked(idx);
 
-    setTimeout(async () => {
+      setTimeout(async () => {
       setRevealed(true);
       if (user?.id) {
         try {
+          if (!backendSuccess && result.payout > 0) {
+            try {
+              const { data: profile, error: profileError } = await supabase
+                .from('user_profiles')
+                .select('cash_balance,total_won')
+                .eq('id', user.id)
+                .single();
+
+              if (profileError) {
+                console.warn('[MaiCardPick] reward profile lookup failed:', profileError);
+              } else {
+                const { error: updateError } = await supabase
+                  .from('user_profiles')
+                  .update({
+                    cash_balance: Number((Number(profile?.cash_balance ?? 0) + result.payout).toFixed(2)),
+                    total_won: Number((Number(profile?.total_won ?? 0) + result.payout).toFixed(2)),
+                    updated_at: new Date().toISOString(),
+                  })
+                  .eq('id', user.id);
+
+                if (updateError) {
+                  console.warn('[MaiCardPick] reward update failed:', updateError);
+                } else {
+                  const coinAmount = Math.round(result.payout * 100);
+                  const { error: transactionError } = await supabase.from('coin_transactions').insert({
+                    user_id: user.id,
+                    type: 'reward',
+                    amount: coinAmount,
+                    price_usd: result.payout,
+                    status: 'completed',
+                  });
+                  if (transactionError) console.warn('[MaiCardPick] reward transaction failed:', transactionError);
+                }
+              }
+            } catch (err) {
+              console.error('[MaiCardPick] reward processing exception:', err);
+            }
+          }
+
           await Promise.all([
             refreshWallet(user.id),
             loadTokenTransactions(user.id),

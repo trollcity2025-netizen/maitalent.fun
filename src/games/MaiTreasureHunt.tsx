@@ -125,11 +125,43 @@ const openChest = useCallback(async (idx: number) => {
         } else if (result.reward.type === 'hype_coin') {
           await supabase.from('user_profiles').update({ hype_coins: (wallet?.hype_coins ?? 0) + 1 }).eq('id', user.id);
 } else if (result.reward.type === 'cash') {
-                    await supabase.from('user_profiles').update({
-                        cash_balance: (wallet?.cash_balance ?? 0) + Math.round(result.reward.amount * 100),
-                        total_won: (wallet?.total_won ?? 0) + result.reward.amount,
-                        updated_at: new Date().toISOString(),
-                      }).eq('id', user.id);
+                    try {
+                      const payout = result.reward.amount;
+                      const { data: profile, error: profileError } = await supabase
+                        .from('user_profiles')
+                        .select('cash_balance,total_won')
+                        .eq('id', user.id)
+                        .single();
+
+                      if (profileError) {
+                        console.warn('[MaiTreasureHunt] reward profile lookup failed:', profileError);
+                      } else {
+                        const { error: updateError } = await supabase
+                          .from('user_profiles')
+                          .update({
+                            cash_balance: Number((Number(profile?.cash_balance ?? 0) + payout).toFixed(2)),
+                            total_won: Number((Number(profile?.total_won ?? 0) + payout).toFixed(2)),
+                            updated_at: new Date().toISOString(),
+                          })
+                          .eq('id', user.id);
+
+                        if (updateError) {
+                          console.warn('[MaiTreasureHunt] reward update failed:', updateError);
+                        } else {
+                          const coinAmount = Math.round(payout * 100);
+                          const { error: transactionError } = await supabase.from('coin_transactions').insert({
+                            user_id: user.id,
+                            type: 'reward',
+                            amount: coinAmount,
+                            price_usd: payout,
+                            status: 'completed',
+                          });
+                          if (transactionError) console.warn('[MaiTreasureHunt] reward transaction failed:', transactionError);
+                        }
+                      }
+                    } catch (err) {
+                      console.error('[MaiTreasureHunt] reward processing exception:', err);
+                    }
                   }
       }
     } catch (err) {

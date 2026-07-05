@@ -212,6 +212,7 @@ CREATE TABLE IF NOT EXISTS public.pending_paypal_orders (
   capture_id VARCHAR(255),
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'captured', 'failed', 'cancelled')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
   captured_at TIMESTAMPTZ
 );
 
@@ -454,6 +455,7 @@ SELECT tokens, remaining_guaranteed_turns, token_usages
       remaining_guaranteed_turns = GREATEST(remaining_guaranteed_turns - CASE WHEN COALESCE(v_guaranteed_turns,0) > 0 THEN 1 ELSE 0 END, 0),
       troll_coins = troll_coins + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'token' THEN (v_reward * 100)::BIGINT ELSE 0 END,
       cashout_coins = cashout_coins + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN (v_reward * 100)::BIGINT ELSE 0 END,
+      cash_balance = COALESCE(cash_balance,0) + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN round(v_reward::numeric,2) ELSE 0 END,
       total_won = total_won + CASE WHEN v_win THEN v_reward ELSE 0 END,
       updated_at = NOW()
   WHERE id = p_user_id AND tokens >= 15;
@@ -461,6 +463,12 @@ SELECT tokens, remaining_guaranteed_turns, token_usages
   INSERT INTO public.token_transactions (user_id, type, amount, source) VALUES (p_user_id, 'play', -15, 'free');
   INSERT INTO public.game_sessions (user_id, game_type, token_cost, result, reward_amount, reward_type, random_seed)
   VALUES (p_user_id, p_game_type, 15, CASE WHEN v_win THEN 'win' ELSE 'loss' END, v_reward, v_reward_type, v_seed);
+
+  -- Persist coin transaction for cash rewards (amount stored in cents)
+  IF v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN
+    INSERT INTO public.coin_transactions (user_id, type, amount, price_usd, status, created_at)
+    VALUES (p_user_id, 'bonus', round(v_reward * 100)::BIGINT, v_reward, 'completed', now());
+  END IF;
 
   RETURN QUERY SELECT CASE WHEN v_win THEN 'win' ELSE 'loss' END::VARCHAR, v_reward, v_reward_type, v_seed;
 END;
