@@ -22,7 +22,6 @@ export default function CoinStorePage() {
   const [trollAmount, setTrollAmount] = useState(100);
   const [hypeAmount, setHypeAmount] = useState(100);
   const [isPaypalReady, setIsPaypalReady] = useState(false);
-  const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
   const captureInProgressRef = useRef(false);
   const capturedOrderIdsRef = useRef(new Set<string>());
   const paypalRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -92,7 +91,6 @@ export default function CoinStorePage() {
           capturedOrderIdsRef.current.add(orderId);
 
           try {
-            setProcessingOrderId(orderId);
             const { data: result, error } = await supabase.functions.invoke('coin-capture', {
               body: JSON.stringify({ orderId }),
               headers: { 'Content-Type': 'application/json' },
@@ -116,7 +114,6 @@ export default function CoinStorePage() {
             setError(err.message);
           } finally {
             setProcessing(null);
-            setProcessingOrderId(null);
             captureInProgressRef.current = false;
           }
         },
