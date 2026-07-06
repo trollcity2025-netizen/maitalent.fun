@@ -17,6 +17,11 @@ export default function ProfilePage() {
   const [message, setMessage] = useState('');
   const [sessions, setSessions] = useState<GameSession[]>([]);
 
+  // ID verification state
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [idUploading, setIdUploading] = useState(false);
+  const [idMessage, setIdMessage] = useState('');
+
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
     setUsername(user.username);
@@ -56,6 +61,64 @@ export default function ProfilePage() {
     setPromoLoading(false);
     setPromoCode('');
     setTimeout(() => setMessage(''), 4000);
+  };
+
+  const getVerificationStatus = () => {
+    if (!user) return { status: 'unknown', daysUntilExpiry: 0, needsReverification: false };
+    const status = user.id_verification_status || 'not_submitted';
+    if (status !== 'approved') return { status, daysUntilExpiry: 0, needsReverification: true };
+
+    if (!user.id_verified_at) return { status, daysUntilExpiry: 0, needsReverification: true };
+
+    const verifiedAt = new Date(user.id_verified_at);
+    const now = new Date();
+    const daysSince = Math.floor((now.getTime() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24));
+    const daysUntilExpiry = Math.max(0, 30 - daysSince);
+    const needsReverification = daysSince >= 30;
+
+    return { status, daysUntilExpiry, needsReverification };
+  };
+
+  const verification = getVerificationStatus();
+
+  const handleIdUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!idFile || !user) return;
+    setIdUploading(true);
+    setIdMessage('');
+
+    try {
+      const fileExt = idFile.name.split('.').pop();
+      const filePath = `${user.id}/id-verification.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('id-verification')
+        .upload(filePath, idFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('id-verification')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({
+          id_document_url: publicUrl,
+          id_verification_status: 'pending',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setIdMessage('ID document submitted for review.');
+      setIdFile(null);
+    } catch (err: any) {
+      setIdMessage('Error uploading ID: ' + err.message);
+    } finally {
+      setIdUploading(false);
+    }
   };
 
   if (!user) return null;
@@ -99,6 +162,65 @@ export default function ProfilePage() {
             {saving ? 'Saving...' : 'Save Profile'}
           </button>
           {message && <p style={{ marginTop: 12, color: message.includes('Error') ? '#ff4444' : '#39ff14' }}>{message}</p>}
+        </div>
+
+        {/* ID Verification Section */}
+        <div className="card neon-border" style={{ maxWidth: 600, margin: '0 auto 24px' }}>
+          <h3 style={{ marginBottom: 12 }}>Identity Verification</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: 16 }}>
+            Verify your identity to unlock premium games. Verification is required once every 30 days.
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+            <span className="badge" style={{
+              background: verification.status === 'approved' ? 'rgba(57,255,20,.1)' : verification.status === 'pending' ? 'rgba(255,255,0,.1)' : 'rgba(255,68,68,.1)',
+              border: `1px solid ${verification.status === 'approved' ? '#39ff1440' : verification.status === 'pending' ? '#ffff0040' : '#ff444440'}`,
+              color: verification.status === 'approved' ? '#39ff14' : verification.status === 'pending' ? '#ffff00' : '#ff4444',
+            }}>
+              {verification.status === 'approved' ? 'Verified' : verification.status === 'pending' ? 'Pending Review' : 'Not Verified'}
+            </span>
+            {verification.status === 'approved' && (
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                {verification.needsReverification
+                  ? 'Re-verification required (30 days elapsed)'
+                  : `Expires in ${verification.daysUntilExpiry} days`}
+              </span>
+            )}
+          </div>
+
+          {(verification.status !== 'approved' || verification.needsReverification) && (
+            <form onSubmit={handleIdUpload} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.85rem' }}>
+                  Upload Government-Issued ID
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => setIdFile(e.target.files?.[0] || null)}
+                  style={{ fontSize: '0.85rem' }}
+                  disabled={idUploading}
+                />
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4 }}>
+                  Accepted formats: JPG, PNG, WEBP. Max 5MB.
+                </p>
+              </div>
+              <button type="submit" className="btn btn-primary" disabled={idUploading || !idFile}>
+                {idUploading ? 'Uploading...' : 'Submit ID for Verification'}
+              </button>
+              {idMessage && (
+                <p style={{ color: idMessage.includes('Error') ? '#ff4444' : '#39ff14', fontSize: '0.85rem' }}>
+                  {idMessage}
+                </p>
+              )}
+            </form>
+          )}
+
+          {verification.status === 'approved' && !verification.needsReverification && (
+            <p style={{ fontSize: '0.85rem', color: '#39ff14' }}>
+              Your identity is verified. You have access to premium games.
+            </p>
+          )}
         </div>
 
         <div className="card neon-border" style={{ maxWidth: 600, margin: '0 auto 24px' }}>

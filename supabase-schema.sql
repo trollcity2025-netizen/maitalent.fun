@@ -31,8 +31,46 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
   total_won DECIMAL(12,2) DEFAULT 0,
   total_cashed_out DECIMAL(12,2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Identity verification fields (admin-only access)
+  full_name VARCHAR(255),
+  date_of_birth DATE,
+  address TEXT,
+  city VARCHAR(100),
+  state VARCHAR(100),
+  zip VARCHAR(20),
+  ssn_last4 CHAR(4),
+  id_verified BOOLEAN DEFAULT FALSE,
+  id_verified_at TIMESTAMPTZ,
+  id_document_url TEXT,
+  id_verification_status VARCHAR(20) DEFAULT 'not_submitted' CHECK (id_verification_status IN ('not_submitted', 'pending', 'approved', 'rejected')),
+  id_verification_notes TEXT
 );
+
+-- Identity verification storage bucket
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('id-verification', 'id-verification', FALSE, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp'])
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage policies for id-verification bucket
+CREATE POLICY "Users can upload own ID" ON storage.objects
+  FOR INSERT WITH CHECK (
+    bucket_id = 'id-verification' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Users can view own ID" ON storage.objects
+  FOR SELECT USING (
+    bucket_id = 'id-verification' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
+CREATE POLICY "Admins can manage ID verifications" ON storage.objects
+  FOR ALL USING (
+    bucket_id = 'id-verification' AND
+    EXISTS (SELECT 1 FROM public.user_profiles WHERE id = auth.uid()::uuid AND is_admin = true)
+  );
 
 -- Helper function: check if the current requester is an admin.
 -- Runs with SECURITY DEFINER to avoid RLS recursion when used inside policies.
@@ -693,7 +731,7 @@ DECLARE
   v_reward DECIMAL := 0;
   v_reward_type VARCHAR := 'none';
   v_tokens BIGINT;
-  v_token_cost INT := 15;
+  v_token_cost INT := CASE WHEN p_game_type = 'treasure_hunt' THEN 5 ELSE 15 END;
   v_guaranteed_turns INT;
   v_total_deposited DECIMAL(12,2);
   v_max_reward DECIMAL(10,2) := 10.00;

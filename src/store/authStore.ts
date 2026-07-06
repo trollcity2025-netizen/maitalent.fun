@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return { error: null };
   },
 
-  signUp: async (email, password, username) => {
+  signUp: async (email, password, username, realName, dateOfBirth, address, city, state, zip, ssnLast4) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -72,6 +72,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         id: uid,
         username: displayName,
         email: user.email,
+        full_name: realName || displayName,
+        date_of_birth: dateOfBirth || null,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
+        ssn_last4: ssnLast4 || null,
         troll_coins: 5,
         tokens: 5,
         total_won: 0.05,

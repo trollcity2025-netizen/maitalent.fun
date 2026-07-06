@@ -175,7 +175,11 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       const authHeader = session?.access_token ? `Bearer ${session.access_token}` : null;
       if (!authHeader) return { success: false, message: 'You must be signed in to redeem a promo code.' };
 
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/redeem-maitalent-promo`, {
+      const redeemUrl = import.meta.env.VITE_TROLL_CITY_PROMO_REDEEM_URL;
+
+      console.info('[redeemPromoCode] calling', redeemUrl, 'for user', userId);
+
+      const response = await fetch(redeemUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,8 +189,20 @@ export const useWalletStore = create<WalletState>((set, get) => ({
         body: JSON.stringify({ code, requestor: { platform: 'maitalent.fun', accountId: userId } }),
       });
 
-      const payload = await response.json().catch(() => ({}));
+      console.info('[redeemPromoCode] response status', response.status, response.statusText);
+
+      const payload = await response.json().catch((err) => {
+        console.error('[redeemPromoCode] failed to parse response JSON', err);
+        return {};
+      });
+
       if (!response.ok || !payload.success) {
+        console.warn('[redeemPromoCode] redeem failed', {
+          status: response.status,
+          error: payload.error,
+          code: payload.code,
+          tokenAmount: payload.tokenAmount,
+        });
         return { success: false, message: payload.error || 'Promo redemption failed.', tokenAmount: payload.tokenAmount };
       }
 

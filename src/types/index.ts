@@ -23,6 +23,19 @@ export interface Profile {
   total_won?: number;
   total_cashed_out?: number;
   updated_at?: string;
+
+  full_name?: string;
+  date_of_birth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  ssn_last4?: string;
+  id_verified?: boolean;
+  id_verified_at?: string;
+  id_document_url?: string;
+  id_verification_status?: 'not_submitted' | 'pending' | 'approved' | 'rejected';
+  id_verification_notes?: string;
 }
 
 export interface Wallet {

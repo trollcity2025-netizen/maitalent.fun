@@ -11,9 +11,9 @@ const userId = args[0];
 const gameType = args[1] || 'coin_flip';
 
 const url = process.env.VITE_SUPABASE_URL;
-const key = process.env.VITE_SUPABASE_SERVICE_ROLE;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!url || !key) {
-  console.error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_SERVICE_ROLE in .env');
+  console.error('Missing VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env');
   process.exit(1);
 }
 

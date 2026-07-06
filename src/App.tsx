@@ -13,6 +13,7 @@ import TermsPage from './pages/TermsPage';
 import ResponsiblePlayPage from './pages/ResponsiblePlayPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ProfilePage from './pages/ProfilePage';
+import RedeemPage from './pages/RedeemPage';
 import PublicProfilePage from './pages/PublicProfilePage';
 import ChatPage from './pages/ChatPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -56,6 +57,7 @@ function App() {
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+          <Route path="/redeem" element={<RedeemPage />} />
           <Route path="/mai-pay" element={<ProtectedRoute><MaiPayPage /></ProtectedRoute>} />
           <Route path="/daily-rewards" element={<ProtectedRoute><DailyRewardsPage /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />

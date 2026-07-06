@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import SEO from '../components/SEO';
 import type { AdminGameSettings, CashoutRequest, Profile, MaiPayApplication, GiftCardRedemption, PendingPaypalOrder } from '../types';
 
-type Tab = 'overview' | 'users' | 'cashouts' | 'applications' | 'settings' | 'audit' | 'trivia' | 'giftcards' | 'coin-purchases';
+type Tab = 'overview' | 'users' | 'cashouts' | 'applications' | 'settings' | 'audit' | 'trivia' | 'giftcards' | 'coin-purchases' | 'verifications';
 
 export default function AdminDashboard() {
   const { user } = useAuthStore();
@@ -15,10 +15,12 @@ export default function AdminDashboard() {
   const [giftCards, setGiftCards] = useState<GiftCardRedemption[]>([]);
   const [settings, setSettings] = useState<AdminGameSettings[]>([]);
   const [coinPurchases, setCoinPurchases] = useState<(PendingPaypalOrder & { profile?: Profile })[]>([]);
+  const [verifications, setVerifications] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [enteringCode, setEnteringCode] = useState<string | null>(null);
   const [visaGiftCodeInput, setVisaGiftCodeInput] = useState('');
+  const [verificationNotes, setVerificationNotes] = useState<Record<string, string>>({});
 
   useEffect(() => { if (user) loadData(); }, [user, tab]);
 
@@ -27,6 +29,15 @@ export default function AdminDashboard() {
     if (tab === 'users' || tab === 'overview') {
       const { data: u } = await supabase.from('user_profiles').select('*').limit(100);
       setUsers(u || []);
+    }
+    if (tab === 'verifications') {
+      const { data: v } = await supabase
+        .from('user_profiles')
+        .select('id, username, email, full_name, date_of_birth, address, city, state, zip, ssn_last4, id_verified, id_verified_at, id_document_url, id_verification_status, id_verification_notes, created_at')
+        .neq('id_verification_status', 'not_submitted')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      setVerifications(v || []);
     }
     if (tab === 'cashouts' || tab === 'giftcards' || tab === 'overview') {
       const { data: g } = await supabase.from('gift_card_redemptions').select('*').order('created_at', { ascending: false }).limit(50);
@@ -136,6 +147,26 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
     loadData();
   };
 
+  const handleVerificationAction = async (userId: string, action: 'approved' | 'rejected') => {
+    const notes = verificationNotes[userId] || '';
+    const update: any = {
+      id_verification_status: action === 'approved' ? 'approved' : 'rejected',
+      id_verification_notes: notes,
+      updated_at: new Date().toISOString(),
+    };
+    if (action === 'approved') {
+      update.id_verified = true;
+      update.id_verified_at = new Date().toISOString();
+    }
+    await supabase.from('user_profiles').update(update).eq('id', userId);
+    setVerificationNotes((prev) => {
+      const next = { ...prev };
+      delete next[userId];
+      return next;
+    });
+    loadData();
+  };
+
   const saveGiftCardCodeToUser = async (redemptionId: string) => {
     const code = visaGiftCodeInput.trim();
     
@@ -222,9 +253,9 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
       <div className="page container">
         <h1 className="section-title neon-text-pink">Admin Dashboard</h1>
         <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-          {(['overview', 'users', 'cashouts', 'applications', 'settings', 'audit', 'trivia', 'coin-purchases'] as Tab[]).map((t) => (
+          {(['overview', 'users', 'cashouts', 'applications', 'settings', 'audit', 'trivia', 'coin-purchases', 'verifications'] as Tab[]).map((t) => (
             <button key={t} className={`btn ${tab === t ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab(t)} style={{ fontSize: 12, padding: '8px 16px' }}>
-              {t === 'cashouts' ? 'Cashouts' : t.charAt(0).toUpperCase() + t.slice(1)}
+              {t === 'cashouts' ? 'Cashouts' : t === 'verifications' ? 'ID Verifications' : t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
@@ -545,6 +576,67 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
                           </span>
                         </td>
                         <td style={{ padding: 12, fontSize: 12 }}>{new Date(p.created_at).toLocaleDateString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+        {tab === 'verifications' && !loading && (
+          <div className="card neon-border">
+            <h2 style={{ marginBottom: 16 }}>ID Verifications</h2>
+            {verifications.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No verification submissions yet</p> : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead><tr style={{ borderBottom: '1px solid #333366' }}>
+                    <th style={{ padding: 12, textAlign: 'left' }}>User</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>Full Name</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>DOB</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>Location</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>SSN Last 4</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {verifications.map((v) => (
+                      <tr key={v.id} style={{ borderBottom: '1px solid #1a1a2e' }}>
+                        <td style={{ padding: 12 }}>
+                          <a href={`/user/${v.id}`} style={{ color: 'var(--neon-blue)' }}>{v.username}</a>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{v.email}</div>
+                        </td>
+                        <td style={{ padding: 12 }}>{v.full_name || '—'}</td>
+                        <td style={{ padding: 12 }}>{v.date_of_birth || '—'}</td>
+                        <td style={{ padding: 12, fontSize: 12 }}>{[v.city, v.state, v.zip].filter(Boolean).join(', ') || '—'}</td>
+                        <td style={{ padding: 12, fontFamily: 'monospace' }}>{v.ssn_last4 || '—'}</td>
+                        <td style={{ padding: 12 }}>
+                          <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, background: v.id_verification_status === 'pending' ? '#ffff0033' : v.id_verification_status === 'approved' ? '#39ff1433' : '#ff444433', color: v.id_verification_status === 'pending' ? '#ffff00' : v.id_verification_status === 'approved' ? '#39ff14' : '#ff4444' }}>
+                            {v.id_verification_status || '—'}
+                          </span>
+                        </td>
+                        <td style={{ padding: 12 }}>
+                          {v.id_verification_status === 'pending' && (
+                            <div style={{ display: 'flex', gap: 4, flexDirection: 'column' }}>
+                              <input
+                                type="text"
+                                placeholder="Admin notes (optional)"
+                                value={verificationNotes[v.id] || ''}
+                                onChange={(e) => setVerificationNotes((prev) => ({ ...prev, [v.id]: e.target.value }))}
+                                style={{ fontSize: 11, padding: '4px 8px', width: '100%' }}
+                              />
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button className="btn btn-green" style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => handleVerificationAction(v.id, 'approved')}>Approve</button>
+                                <button className="btn" style={{ fontSize: 10, padding: '4px 8px', background: '#ff4444', color: '#fff' }} onClick={() => handleVerificationAction(v.id, 'rejected')}>Reject</button>
+                              </div>
+                            </div>
+                          )}
+                          {v.id_verification_status === 'approved' && (
+                            <span style={{ fontSize: 11, color: 'var(--neon-green)' }}>
+                              ✓ Verified {v.id_verified_at ? new Date(v.id_verified_at).toLocaleDateString() : ''}
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

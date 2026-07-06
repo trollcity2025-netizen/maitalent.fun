@@ -12,7 +12,7 @@ interface ChestResult {
 }
 
 const GRID_SIZE = 16;
-const GAME_COST = 15;
+const GAME_COST = 5;
 
 function generateChests(): number[] {
   const positions = new Set<number>();

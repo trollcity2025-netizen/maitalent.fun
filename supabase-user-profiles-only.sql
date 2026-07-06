@@ -418,6 +418,7 @@ DECLARE
   v_token_usages BIGINT;
   v_tokens BIGINT;
   v_guaranteed_turns INT;
+  v_token_cost INT := CASE WHEN p_game_type = 'treasure_hunt' THEN 5 ELSE 15 END;
 BEGIN
   IF auth.uid() IS DISTINCT FROM p_user_id THEN RAISE EXCEPTION 'Not allowed'; END IF;
 
@@ -451,18 +452,19 @@ SELECT tokens, remaining_guaranteed_turns, token_usages
   END IF;
 
   UPDATE public.user_profiles
-  SET tokens = tokens - 15,
+  SET tokens = tokens - v_token_cost,
       remaining_guaranteed_turns = GREATEST(remaining_guaranteed_turns - CASE WHEN COALESCE(v_guaranteed_turns,0) > 0 THEN 1 ELSE 0 END, 0),
       troll_coins = troll_coins + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'token' THEN (v_reward * 100)::BIGINT ELSE 0 END,
       cashout_coins = cashout_coins + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN (v_reward * 100)::BIGINT ELSE 0 END,
       cash_balance = COALESCE(cash_balance,0) + CASE WHEN v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN round(v_reward::numeric,2) ELSE 0 END,
       total_won = total_won + CASE WHEN v_win THEN v_reward ELSE 0 END,
       updated_at = NOW()
-  WHERE id = p_user_id AND tokens >= 15;
+  WHERE id = p_user_id AND tokens >= v_token_cost;
 
-  INSERT INTO public.token_transactions (user_id, type, amount, source) VALUES (p_user_id, 'play', -15, 'free');
+  INSERT INTO public.token_transactions (user_id, type, amount, source) VALUES (p_user_id, 'play', -v_token_cost, 'free');
+
   INSERT INTO public.game_sessions (user_id, game_type, token_cost, result, reward_amount, reward_type, random_seed)
-  VALUES (p_user_id, p_game_type, 15, CASE WHEN v_win THEN 'win' ELSE 'loss' END, v_reward, v_reward_type, v_seed);
+  VALUES (p_user_id, p_game_type, v_token_cost, CASE WHEN v_win THEN 'win' ELSE 'loss' END, v_reward, v_reward_type, v_seed);
 
   -- Persist coin transaction for cash rewards (amount stored in cents)
   IF v_win AND v_reward > 0 AND v_reward_type = 'cash' THEN
