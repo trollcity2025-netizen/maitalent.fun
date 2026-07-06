@@ -21,6 +21,9 @@ export default function AdminDashboard() {
   const [enteringCode, setEnteringCode] = useState<string | null>(null);
   const [visaGiftCodeInput, setVisaGiftCodeInput] = useState('');
   const [verificationNotes, setVerificationNotes] = useState<Record<string, string>>({});
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   useEffect(() => { if (user) loadData(); }, [user, tab]);
 
@@ -33,7 +36,7 @@ export default function AdminDashboard() {
     if (tab === 'verifications') {
       const { data: v } = await supabase
         .from('user_profiles')
-        .select('id, username, email, full_name, date_of_birth, address, city, state, zip, ssn_last4, id_verified, id_verified_at, id_document_url, id_verification_status, id_verification_notes, created_at')
+        .select('id, username, email, full_name, date_of_birth, address, city, state, zip, ssn_last4, id_verified, id_verified_at, id_document_url, id_verification_status, id_verification_notes, created_at, is_admin, frozen')
         .neq('id_verification_status', 'not_submitted')
         .order('created_at', { ascending: false })
         .limit(50);
@@ -70,6 +73,36 @@ export default function AdminDashboard() {
   const handleFreeze = async (userId: string, frozen: boolean) => {
     await supabase.from('user_profiles').update({ frozen }).eq('id', userId);
     loadData();
+  };
+
+  const getStoragePath = (url: string) => {
+    const match = url.match(/\/storage\/v1\/object\/public\/id-verification\/(.+)$/);
+    return match ? match[1] : null;
+  };
+
+  const openIdViewer = async (idDocumentUrl: string) => {
+    setViewingId(idDocumentUrl);
+    setSignedUrl(null);
+    setViewLoading(true);
+    try {
+      const path = getStoragePath(idDocumentUrl);
+      if (path) {
+        const { data } = await supabase.storage.from('id-verification').createSignedUrl(path, 60);
+        if (data?.signedUrl) {
+          setSignedUrl(data.signedUrl);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to create signed URL', err);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const closeIdViewer = () => {
+    setViewingId(null);
+    setSignedUrl(null);
+    setViewLoading(false);
   };
 
 
@@ -541,8 +574,41 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
                </div>
              </div>
            </div>
-         )}
-        {tab === 'coin-purchases' && !loading && (
+          )}
+         {viewingId && (
+            <div style={{ 
+              position: 'fixed', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0, 
+              background: 'rgba(0,0,0,0.9)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              zIndex: 1000
+            }}>
+              <div className="card neon-border" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <h3 style={{ margin: 0 }}>ID Document</h3>
+                  <button className="btn btn-outline" onClick={closeIdViewer} style={{ fontSize: 12 }}>Close</button>
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d2b', borderRadius: 8, minHeight: 300 }}>
+                  {viewLoading ? (
+                    <p style={{ color: 'var(--text-secondary)' }}>Loading document...</p>
+                  ) : signedUrl ? (
+                    <img src={signedUrl} alt="ID Document" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, objectFit: 'contain' }} />
+                  ) : (
+                    <p style={{ color: '#ff4444' }}>Unable to load document. It may have been removed.</p>
+                  )}
+                </div>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
+                  Link expires in 60 seconds for security.
+                </p>
+              </div>
+            </div>
+          )}
+         {tab === 'coin-purchases' && !loading && (
           <div className="card neon-border">
             <h2 style={{ marginBottom: 16 }}>Coin Pack Purchases</h2>
             {coinPurchases.length === 0 ? <p style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No coin purchases yet</p> : (
@@ -597,6 +663,7 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
                     <th style={{ padding: 12, textAlign: 'left' }}>Location</th>
                     <th style={{ padding: 12, textAlign: 'left' }}>SSN Last 4</th>
                     <th style={{ padding: 12, textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: 12, textAlign: 'left' }}>Document</th>
                     <th style={{ padding: 12, textAlign: 'left' }}>Actions</th>
                   </tr></thead>
                   <tbody>
@@ -614,6 +681,13 @@ const handleCashoutAction = async (id: string, action: 'approved' | 'denied' | '
                           <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: 11, background: v.id_verification_status === 'pending' ? '#ffff0033' : v.id_verification_status === 'approved' ? '#39ff1433' : '#ff444433', color: v.id_verification_status === 'pending' ? '#ffff00' : v.id_verification_status === 'approved' ? '#39ff14' : '#ff4444' }}>
                             {v.id_verification_status || '—'}
                           </span>
+                        </td>
+                        <td style={{ padding: 12 }}>
+                          {v.id_document_url ? (
+                            <button className="btn btn-outline" style={{ fontSize: 10, padding: '4px 8px' }} onClick={() => openIdViewer(v.id_document_url!)}>View ID</button>
+                          ) : (
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>None</span>
+                          )}
                         </td>
                         <td style={{ padding: 12 }}>
                           {v.id_verification_status === 'pending' && (

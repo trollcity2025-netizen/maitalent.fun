@@ -12,7 +12,7 @@ interface AuthState {
   setUser: (user: Profile | null) => void;
   setWallet: (wallet: Wallet | null) => void;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, username: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string, username: string, realName: string, dateOfBirth: string, address: string, city: string, state: string, zip: string, ssnLast4: string, signupMeta?: { ip?: string; deviceFingerprint?: string; latitude?: number; longitude?: number }) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   loadUser: () => Promise<void>;
 }
@@ -51,7 +51,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return { error: null };
   },
 
-  signUp: async (email, password, username, realName, dateOfBirth, address, city, state, zip, ssnLast4) => {
+  signUp: async (email, password, username, realName, dateOfBirth, address, city, state, zip, ssnLast4, signupMeta) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -79,6 +79,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         state: state || null,
         zip: zip || null,
         ssn_last4: ssnLast4 || null,
+        signup_ip: signupMeta?.ip || null,
+        signup_device_fingerprint: signupMeta?.deviceFingerprint || null,
+        signup_latitude: signupMeta?.latitude ?? null,
+        signup_longitude: signupMeta?.longitude ?? null,
         troll_coins: 5,
         tokens: 5,
         total_won: 0.05,

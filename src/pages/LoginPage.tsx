@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { supabase } from '../lib/supabase';
 import SEO from '../components/SEO';
 
 export default function LoginPage() {
@@ -18,9 +19,90 @@ export default function LoginPage() {
   const [ssnLast4, setSsnLast4] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [underAgeBanner, setUnderAgeBanner] = useState(false);
+  const [geoBannedBanner, setGeoBannedBanner] = useState(false);
+  const [banLoading, setBanLoading] = useState(false);
 
   const { signIn, signUp } = useAuthStore();
   const navigate = useNavigate();
+
+  const calculateAge = (dob: string) => {
+    const diff = Date.now() - new Date(dob).getTime();
+    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+  };
+
+  const getDeviceFingerprint = () => {
+    let deviceId = localStorage.getItem('device_id');
+    if (!deviceId) {
+      deviceId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem('device_id', deviceId);
+    }
+    return `${deviceId}|${navigator.userAgent}`;
+  };
+
+  const getUserIP = async () => {
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      return data.ip;
+    } catch {
+      return null;
+    }
+  };
+
+  const getUserLocation = async () => {
+    try {
+      const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, enableHighAccuracy: true });
+      });
+      return { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+    } catch {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        if (data.latitude && data.longitude) {
+          return { lat: data.latitude, lng: data.longitude, accuracy: 50000 };
+        }
+      } catch {}
+    }
+    return null;
+  };
+
+  const recordBan = async (banType: string, reason: string, meta: Record<string, unknown>) => {
+    const ip = await getUserIP();
+    const deviceFingerprint = getDeviceFingerprint();
+    const location = await getUserLocation();
+    await supabase.from('user_bans').insert({
+      ban_type: banType,
+      ip_address: ip,
+      device_fingerprint: deviceFingerprint,
+      latitude: location?.lat,
+      longitude: location?.lng,
+      reason,
+      metadata: meta,
+    });
+  };
+
+  const checkExistingBans = async (): Promise<boolean> => {
+    const ip = await getUserIP();
+    const deviceFingerprint = getDeviceFingerprint();
+    const location = await getUserLocation();
+
+    if (ip) {
+      const { data: ipBanned } = await supabase.rpc('is_ip_banned', { p_ip: ip });
+      if (ipBanned) return true;
+    }
+
+    const { data: devBanned } = await supabase.rpc('is_device_banned', { p_device_fingerprint: deviceFingerprint });
+    if (devBanned) return true;
+
+    if (location) {
+      const { data: geoBanned } = await supabase.rpc('is_near_banned_location', { p_lat: location.lat, p_lng: location.lng, p_radius_meters: 61 });
+      if (geoBanned) return true;
+    }
+
+    return false;
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,6 +125,8 @@ export default function LoginPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setUnderAgeBanner(false);
+    setGeoBannedBanner(false);
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -55,18 +139,50 @@ export default function LoginPage() {
       setError('SSN last 4 must be exactly 4 digits.');
       return;
     }
-    setLoading(true);
-    const { error } = await signUp(email, password, username, realName, dateOfBirth, address, city, state, zip, ssnLast4);
-    setLoading(false);
-    if (error) {
-      setError(error);
-    } else {
-      const pending = localStorage.getItem('pendingPromoCode');
-      if (pending) {
-        navigate(`/redeem?code=${encodeURIComponent(pending)}`);
-      } else {
-        navigate('/dashboard');
+
+    setBanLoading(true);
+    try {
+      const age = calculateAge(dateOfBirth);
+      if (age < 21) {
+        const meta = { dateOfBirth, realName, address, city, state, zip, ssnLast4, age, username: username || email.split('@')[0] };
+        await recordBan('age_under_21', `Under 21 (Age: ${age}) - State: ${state}`, meta);
+        setUnderAgeBanner(true);
+        setBanLoading(false);
+        return;
       }
+
+      const isBanned = await checkExistingBans();
+      if (isBanned) {
+        const meta = { dateOfBirth, realName, address, city, state, zip, ssnLast4, age, username: username || email.split('@')[0] };
+        await recordBan('geo_proximity', 'Within 200 feet of banned location/IP/device', meta);
+        setGeoBannedBanner(true);
+        setBanLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      const { error } = await signUp(email, password, username, realName, dateOfBirth, address, city, state, zip, ssnLast4, {
+        ip: await getUserIP(),
+        deviceFingerprint: getDeviceFingerprint(),
+        latitude: (await getUserLocation())?.lat,
+        longitude: (await getUserLocation())?.lng,
+      });
+      setLoading(false);
+      setBanLoading(false);
+      if (error) {
+        setError(error);
+      } else {
+        const pending = localStorage.getItem('pendingPromoCode');
+        if (pending) {
+          navigate(`/redeem?code=${encodeURIComponent(pending)}`);
+        } else {
+          navigate('/dashboard');
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred during signup.');
+      setLoading(false);
+      setBanLoading(false);
     }
   };
 
@@ -142,6 +258,21 @@ export default function LoginPage() {
           </form>
         ) : (
           <form onSubmit={handleSignUp} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {underAgeBanner && (
+              <div style={{ padding: 16, borderRadius: 8, background: 'rgba(255,68,68,0.15)', border: '1px solid #ff4444', color: '#ff6666', textAlign: 'center', fontSize: '0.9rem' }}>
+                <strong>Under Age</strong><br />
+                You must be 21 or older to use this platform. Your IP, device, and location have been recorded and access is restricted.
+              </div>
+            )}
+            {geoBannedBanner && (
+              <div style={{ padding: 16, borderRadius: 8, background: 'rgba(255,68,68,0.15)', border: '1px solid #ff4444', color: '#ff6666', textAlign: 'center', fontSize: '0.9rem' }}>
+                <strong>Location Restricted</strong><br />
+                Access from your current location is restricted due to proximity to a banned area. You may not sign up from this location.
+              </div>
+            )}
+            {banLoading && (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', fontSize: '0.85rem' }}>Verifying location...</p>
+            )}
             <input
               type="text"
               placeholder="Username"

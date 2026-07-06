@@ -43,6 +43,10 @@ export default function MaiPayCashout() {
       setMessage({ type: 'error', text: 'You must be approved for MAI Pay before requesting a cashout.' });
       return;
     }
+    if (user.id_verification_status !== 'approved') {
+      setMessage({ type: 'error', text: 'You must verify your identity before requesting a cashout.' });
+      return;
+    }
     // Check amount limits based on selected gift card type
     const { min, max } = GIFT_CARD_TYPES[giftCardType];
     if (amount < min || amount > max) {

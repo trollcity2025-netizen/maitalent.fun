@@ -28,6 +28,12 @@ CREATE POLICY "Users can upload own ID" ON storage.objects
     auth.uid()::text = (storage.foldername(name))[1]
   );
 
+CREATE POLICY "Users can update own ID" ON storage.objects
+  FOR UPDATE USING (
+    bucket_id = 'id-verification' AND
+    auth.uid()::text = (storage.foldername(name))[1]
+  );
+
 CREATE POLICY "Users can view own ID" ON storage.objects
   FOR SELECT USING (
     bucket_id = 'id-verification' AND

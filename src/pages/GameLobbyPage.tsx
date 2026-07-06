@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Coins, Zap, Gift, Trophy, Clock, Star, ArrowRight, Lock } from 'lucide-react';
 import SEO from '../components/SEO';
-import { useAuthStore } from '../store/authStore';
 
 type GameCategory = {
   title: string;
@@ -137,7 +136,6 @@ const categories: GameCategory[] = [
 ];
 
 export default function GameLobbyPage() {
-  const { user } = useAuthStore();
 
   return (
     <div className="page">

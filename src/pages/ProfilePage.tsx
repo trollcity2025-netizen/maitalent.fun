@@ -21,6 +21,9 @@ export default function ProfilePage() {
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idUploading, setIdUploading] = useState(false);
   const [idMessage, setIdMessage] = useState('');
+  const [viewingOwnId, setViewingOwnId] = useState(false);
+  const [ownIdSignedUrl, setOwnIdSignedUrl] = useState<string | null>(null);
+  const [ownIdLoading, setOwnIdLoading] = useState(false);
 
   useEffect(() => {
     if (!user) { navigate('/login'); return; }
@@ -121,6 +124,37 @@ export default function ProfilePage() {
     }
   };
 
+  const getStoragePath = (url: string) => {
+    const match = url.match(/\/storage\/v1\/object\/public\/id-verification\/(.+)$/);
+    return match ? match[1] : null;
+  };
+
+  const openOwnIdViewer = async () => {
+    if (!user?.id_document_url) return;
+    setViewingOwnId(true);
+    setOwnIdSignedUrl(null);
+    setOwnIdLoading(true);
+    try {
+      const path = getStoragePath(user.id_document_url);
+      if (path) {
+        const { data } = await supabase.storage.from('id-verification').createSignedUrl(path, 60);
+        if (data?.signedUrl) {
+          setOwnIdSignedUrl(data.signedUrl);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to create signed URL', err);
+    } finally {
+      setOwnIdLoading(false);
+    }
+  };
+
+  const closeOwnIdViewer = () => {
+    setViewingOwnId(false);
+    setOwnIdSignedUrl(null);
+    setOwnIdLoading(false);
+  };
+
   if (!user) return null;
 
   return (
@@ -188,6 +222,15 @@ export default function ProfilePage() {
             )}
           </div>
 
+          {user.id_document_url && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: '0.85rem' }}>Current ID</label>
+              <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={openOwnIdViewer}>
+                View Submitted ID
+              </button>
+            </div>
+          )}
+
           {(verification.status !== 'approved' || verification.needsReverification) && (
             <form onSubmit={handleIdUpload} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -218,10 +261,44 @@ export default function ProfilePage() {
 
           {verification.status === 'approved' && !verification.needsReverification && (
             <p style={{ fontSize: '0.85rem', color: '#39ff14' }}>
-              Your identity is verified. You have access to premium games.
+              Your identity is verified. You have access to premium games, cashouts remember every 30 days to resubmit your id!
             </p>
           )}
         </div>
+
+        {viewingOwnId && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
+            <div className="card neon-border" style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <h3 style={{ margin: 0 }}>Your Submitted ID</h3>
+                <button className="btn btn-outline" onClick={closeOwnIdViewer} style={{ fontSize: 12 }}>Close</button>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d0d2b', borderRadius: 8, minHeight: 300 }}>
+                {ownIdLoading ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>Loading document...</p>
+                ) : ownIdSignedUrl ? (
+                  <img src={ownIdSignedUrl} alt="ID Document" style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8, objectFit: 'contain' }} />
+                ) : (
+                  <p style={{ color: '#ff4444' }}>Unable to load document.</p>
+                )}
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 12, textAlign: 'center' }}>
+                Link expires in 60 seconds for security.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="card neon-border" style={{ maxWidth: 600, margin: '0 auto 24px' }}>
           <h3 style={{ marginBottom: 12 }}>Redeem Troll City Promo</h3>
