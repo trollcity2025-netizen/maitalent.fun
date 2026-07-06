@@ -19,7 +19,7 @@ interface WalletState {
   deductTokens: (userId: string, amount: number) => Promise<boolean>;
   updateBalance: (userId: string, updates: Partial<Profile>) => Promise<boolean>;
   convertTrollToTokens: (userId: string, amount: number) => Promise<void>;
-  convertHypeToTokens: (userId: string, amount: number) => Promise<void>;
+  convertHypeToTokens: (userId: string, amount: number) => Promise<void>; 
   addGiftCardProgress: (userId: string, amount: number) => Promise<void>;
   addHypeCoins: (userId: string, amount: number) => Promise<void>;
   addCashBalance: (userId: string, amount: number) => Promise<void>;
